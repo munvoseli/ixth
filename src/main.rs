@@ -104,26 +104,12 @@ fn operate_the_stack(mut i: usize, c: &Vec<Vec<u8>>, stack: &mut Vec<u64>) -> us
 	return i;
 }
 
-fn things_eq(a: &[u8], b: &[u8]) -> bool {
-	if a.len() != b.len() {
-//		println!("lengths not equal: {} and {}", a.len(), b.len());
-		return false;
-	}
-	for i in 0..a.len() {
-		if a[i] != b[i] {
-//			println!("not equal at {}: {} and {}", i, a[i], b[i]);
-			return false;
-		}
-	}
-	return true;
-}
-
 fn main() {
 	let mut f = File::open("h.txt").unwrap();
 	let mut s = Vec::<u8>::new();
 	f.read_to_end(&mut s).unwrap();
 	println!("Read {} bytes", s.len());
-	let (c, cline) = split_on_ws(s);
+	let (c, _cline) = split_on_ws(s);
 	let mut fndecs = Vec::<usize>::new();
 	checks(&c, &mut fndecs);
 	let mut stack = Vec::<u64>::new();
@@ -131,8 +117,8 @@ fn main() {
 	let mut i = 0;
 	while i < c.len() {
 //		println!("{:x?} {:?}", c[i], stack);
-		println!("    stack: {:?}", stack);
-		println!("    op: {} {:x?} on line {}", i, c[i], cline[i]);
+//		println!("    stack: {:?}", stack);
+//		println!("    op: {} {:x?} on line {}", i, c[i], cline[i]);
 //		println!("{:x?}", c[i]);
 		if c[i] == b"(" {
 			i = operate_the_stack(i, &c, &mut stack);
@@ -172,19 +158,19 @@ fn main() {
 			while c[i] != b"ret" { i += 1; }
 		} else if c[i] == b"gob" {
 			let mut j = stack.pop().unwrap();
-			let bi = i;
+//			let bi = i;
 			while j > 0 {
 				i -= 1;
 				if c[i] == b"{" { j -= 1; }
 			}
-			println!("gob to line {} from line {}", cline[i], cline[bi]);
+//			println!("gob to line {} from line {}", cline[i], cline[bi]);
 		} else if c[i] == b"gof" {
 			let mut j = stack.pop().unwrap();
 			while j > 0 {
 				i += 1;
 				if c[i] == b"}" { j -= 1; }
 			}
-			println!("gof to symbol on line {}", cline[i]);
+//			println!("gof to symbol on line {}", cline[i]);
 		} else {
 			if c[i][0] >= 0x30 && c[i][0] <= 0x39 {
 				stack.push((c[i][0] - 0x30).into());
@@ -193,7 +179,7 @@ fn main() {
 				for j in 0..fndecs.len() {
 					let fni = fndecs[j];
 //					println!("cmp {:x?} {:x?}", c[fni], c[i]);
-					if things_eq(&c[fni], &c[i]) {
+					if c[fni] == c[i] {
 						posstack.push(i);
 						i = fni;
 						found = true;
