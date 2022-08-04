@@ -2,6 +2,10 @@
 
 5 6 ( a b -- b a ) print print
 
+func hello
+5 5 add print
+ret
+hello
 
 8
 {
