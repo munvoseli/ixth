@@ -1,0 +1,6 @@
+
+func hello
+5 5 add print
+ret
+
+hello
