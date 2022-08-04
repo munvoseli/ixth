@@ -1,9 +1,11 @@
 use std::fs::File;
 use std::io::Read;
 
-fn split_on_ws(s: Vec<u8>) -> Vec<Vec<u8>> {
+fn split_on_ws(s: Vec<u8>) -> (Vec<Vec<u8>>, Vec<usize>) {
 	let mut g = Vec::<Vec<u8>>::new();
+	let mut lines = Vec::<usize>::new();
 	let mut i = 0;
+	let mut linen = 1;
 	loop {
 		let mut h = Vec::<u8>::new();
 		while i < s.len() && s[i] > 0x20 {
@@ -11,25 +13,30 @@ fn split_on_ws(s: Vec<u8>) -> Vec<Vec<u8>> {
 			i += 1;
 		}
 		g.push(h);
+		lines.push(linen);
 		while i < s.len() && s[i] <= 0x20 {
+			if s[i] == 10 {
+				linen += 1;
+			}
 			i += 1;
 		}
 		if i == s.len() { break; }
 	}
-	g
+	(g, lines)
 }
 
 fn find_ifterm(mut i: usize, c: &Vec<Vec<u8>>) -> usize {
 	// if can terminate on fi or else, but not if the fi or else is in nest
 	let mut fict = 0;
-	assert!(c[i-1] == b"if");
+	assert!(c[i] == b"if");
+	i += 1;
 	loop {
 		if c[i] == b"if" {
 			fict += 1;
 		}
 		else if c[i] == b"fi" {
-			fict -= 1;
 			if fict == 0 { break; }
+			fict -= 1;
 		}
 		else if c[i] == b"else" {
 			if fict == 0 { break; }
@@ -116,7 +123,7 @@ fn main() {
 	let mut s = Vec::<u8>::new();
 	f.read_to_end(&mut s).unwrap();
 	println!("Read {} bytes", s.len());
-	let c = split_on_ws(s);
+	let (c, cline) = split_on_ws(s);
 	let mut fndecs = Vec::<usize>::new();
 	checks(&c, &mut fndecs);
 	let mut stack = Vec::<u64>::new();
@@ -124,16 +131,18 @@ fn main() {
 	let mut i = 0;
 	while i < c.len() {
 //		println!("{:x?} {:?}", c[i], stack);
-//		println!("    stack: {:?}", stack);
-//		println!("    op: {} {:x?}", i, c[i]);
+		println!("    stack: {:?}", stack);
+		println!("    op: {} {:x?} on line {}", i, c[i], cline[i]);
 //		println!("{:x?}", c[i]);
 		if c[i] == b"(" {
 			i = operate_the_stack(i, &c, &mut stack);
 			assert!(c[i] == b")");
 		} else if c[i] == b"if" {
 			if stack.pop().unwrap() == 0 {
+//				let bi = i;
 				// move past else/fi label
-				i = find_ifterm(i + 1, &c) + 1;
+				i = find_ifterm(i, &c) + 1;
+//				println!("if going from line {} to {}",cline[bi],cline[i]);
 				continue;
 			}
 		} else if c[i] == b"else" {
@@ -142,7 +151,7 @@ fn main() {
 			continue;
 		} else if c[i] == b"fi" {
 		} else if c[i] == b"{" {
-			println!("      passing into block");
+//			println!("      passing into block");
 		} else if c[i] == b"}" {
 			println!("tried to exit block without gof");
 		} else if c[i] == b"add" {
@@ -156,28 +165,26 @@ fn main() {
 			let b = stack.pop().unwrap();
 			stack.push(b - a);
 		} else if c[i] == b"print" {
-			if let Some(j) = stack.pop() {
-				println!("{}", j);
-			} else {
-				println!("symbol {}", i);
-			}
+			println!("{}", stack.pop().unwrap());
 		} else if c[i] == b"ret" {
 			i = posstack.pop().unwrap();
 		} else if c[i] == b"func" {
 			while c[i] != b"ret" { i += 1; }
 		} else if c[i] == b"gob" {
 			let mut j = stack.pop().unwrap();
+			let bi = i;
 			while j > 0 {
 				i -= 1;
 				if c[i] == b"{" { j -= 1; }
 			}
+			println!("gob to line {} from line {}", cline[i], cline[bi]);
 		} else if c[i] == b"gof" {
 			let mut j = stack.pop().unwrap();
 			while j > 0 {
 				i += 1;
 				if c[i] == b"}" { j -= 1; }
 			}
-			i += 1;
+			println!("gof to symbol on line {}", cline[i]);
 		} else {
 			if c[i][0] >= 0x30 && c[i][0] <= 0x39 {
 				stack.push((c[i][0] - 0x30).into());

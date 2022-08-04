@@ -15,8 +15,9 @@ hello
  ( a -- a a ) if
   1 gob
  fi
- gof
+ 1 gof
 }
+( a -- )
 
 8 8 8 add add print
 
